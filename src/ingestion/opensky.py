@@ -5,7 +5,6 @@ world at a time so it doesn't pull in too much at once.
 ###################################################
 """
 
-import random
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -15,10 +14,9 @@ from common.logger import get_logger
 logger = get_logger(__name__)
 
 STATES_URL = "https://opensky-network.org/api/states/all"
-# Anonymous OpenSky access is limited to ~400 requests/day. An average
-# interval of half this max (~5 min) keeps daily calls comfortably under
-# that quota; the old 3-min max averaged ~960 calls/day, well over it.
-DEFAULT_MAX_POLL_SECONDS = 600
+# One request every 15 minutes (~96 requests/day), well under OpenSky's
+# anonymous limit of ~400 requests/day.
+POLL_INTERVAL_SECONDS = 900
 
 # Continental US bounding box - keeps each poll to a manageable number of
 # aircraft instead of the whole planet.
@@ -32,9 +30,9 @@ FIELDS = [
 ]
 
 
-class OpenSkyStream:
-    def __init__(self, max_poll_seconds: float = DEFAULT_MAX_POLL_SECONDS, bbox: dict[str, float] = DEFAULT_BBOX) -> None:
-        self.max_poll_seconds: float = max_poll_seconds
+class OpenSkySource:
+    def __init__(self, poll_interval_seconds: float = POLL_INTERVAL_SECONDS, bbox: dict[str, float] = DEFAULT_BBOX) -> None:
+        self.poll_interval_seconds: float = poll_interval_seconds
         self.bbox: dict[str, float] = bbox
 
     def events(self) -> Iterator[dict[str, Any]]:
@@ -46,9 +44,8 @@ class OpenSkyStream:
                 response.raise_for_status()
                 payload = response.json()
             except requests.exceptions.RequestException as e:
-                delay = random.uniform(0, self.max_poll_seconds)
-                logger.error(f"OpenSky API request failed, will retry in {delay:.0f}s: {e}")
-                time.sleep(delay)
+                logger.error(f"OpenSky API request failed, will retry in {self.poll_interval_seconds:.0f}s: {e}")
+                time.sleep(self.poll_interval_seconds)
                 continue
 
             # --- each state is a plain list, so match it up with FIELDS by position ---
@@ -57,4 +54,4 @@ class OpenSkyStream:
                 if event.get("callsign"):
                     event["callsign"] = event["callsign"].strip() or None
                 yield event
-            time.sleep(random.uniform(0, self.max_poll_seconds))
+            time.sleep(self.poll_interval_seconds)

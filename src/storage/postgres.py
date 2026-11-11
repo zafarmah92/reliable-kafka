@@ -89,7 +89,7 @@ def country_stats_from_batch(batch: list[tuple]) -> list[tuple]:
     ]
 
 
-class OpenSkyEventStore:
+class PostgresFlightStore:
     def __init__(self, dsn: str, flush_interval_seconds: int = 60) -> None:
         self.conn: Connection = psycopg2.connect(dsn)
         self.conn.autocommit = True

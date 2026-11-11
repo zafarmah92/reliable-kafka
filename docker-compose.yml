@@ -46,9 +46,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: producer
-    command: ["python", "-m", "opensky.producer"]
+    command: ["python", "-m", "producer"]
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
+      METRICS_PORT: "8000"
     ports:
       - "8000:8000"
     depends_on:
@@ -63,9 +64,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: consumer
-    command: ["python", "-m", "opensky.consumer"]
+    command: ["python", "-m", "consumer"]
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
+      METRICS_PORT: "8001"
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/opensky
     ports:
       - "8001:8001"
@@ -77,6 +79,23 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  # Processing engine (PySpark / Flink) - replaces `consumer` once implemented.
+  # processor:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: processor
+  #   command: ["python", "-m", "processor"]
+  #   environment:
+  #     PROCESSOR: spark   # or flink
+  #     BOOTSTRAP_SERVERS: kafka:9092
+  #     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/opensky
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #     postgres:
+  #       condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
