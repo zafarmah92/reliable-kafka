@@ -1,0 +1,85 @@
+{
+  "title": "OpenSky SLO",
+  "uid": "opensky-slo",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Messages Produced (total)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "messages_produced_total{job=\"producer\"}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Messages Consumed (total)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "messages_received_total{job=\"consumer\"}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Size of Processed Data (rows in Postgres)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        { "rawSql": "SELECT count(*) FROM flight_states_raw", "format": "table", "refId": "A" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Errors (total)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "messages_produce_failed_total{job=\"producer\"} + consumer_errors_total{job=\"consumer\"}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Produce / Consume Rate (messages per second)",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(messages_produced_total{job=\"producer\"}[1m])", "legendFormat": "produced/s", "refId": "A" },
+        { "expr": "rate(messages_received_total{job=\"consumer\"}[1m])", "legendFormat": "consumed/s", "refId": "B" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Cumulative Produced vs Consumed",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "messages_produced_total{job=\"producer\"}", "legendFormat": "produced", "refId": "A" },
+        { "expr": "messages_received_total{job=\"consumer\"}", "legendFormat": "consumed", "refId": "B" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "title": "OpenSky KPIs",
+  "uid": "opensky-kpis",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "60s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Live Aircraft Map",
+      "type": "geomap",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT icao24, callsign, origin_country, latitude, longitude, baro_altitude, velocity FROM aircraft_current_state WHERE latitude IS NOT NULL AND longitude IS NOT NULL",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "view": { "id": "fit" },
+        "basemap": { "type": "default" },
+        "controls": { "showZoom": true, "showAttribution": true },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Aircraft",
+            "location": { "mode": "auto" },
+            "config": {
+              "style": {
+                "size": { "fixed": 4, "min": 2, "max": 10 },
+                "color": { "field": "baro_altitude" },
+                "opacity": 0.8,
+                "symbol": { "fixed": "img/icons/marker/circle.svg" }
+              }
+            }
+          }
+        ]
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "title": "Airborne vs On Ground",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN on_ground THEN 'On Ground' ELSE 'Airborne' END AS status, count(*) AS aircraft_count FROM aircraft_current_state GROUP BY on_ground",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Flight Phase (airborne)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN vertical_rate > 1 THEN 'Climbing' WHEN vertical_rate < -1 THEN 'Descending' ELSE 'Level' END AS phase, count(*) AS aircraft_count FROM aircraft_current_state WHERE on_ground = false AND vertical_rate IS NOT NULL GROUP BY phase",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Altitude Bands (airborne)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN baro_altitude < 3000 THEN '0-3km' WHEN baro_altitude < 6000 THEN '3-6km' WHEN baro_altitude < 9000 THEN '6-9km' WHEN baro_altitude < 12000 THEN '9-12km' ELSE '12km+' END AS altitude_band, count(*) AS aircraft_count FROM aircraft_current_state WHERE on_ground = false AND baro_altitude IS NOT NULL GROUP BY altitude_band ORDER BY min(baro_altitude)",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Top 10 Fastest Aircraft",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT icao24, callsign, origin_country, velocity, baro_altitude FROM aircraft_current_state WHERE on_ground = false AND velocity IS NOT NULL ORDER BY velocity DESC LIMIT 10",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Highest Flying Aircraft",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT icao24, callsign, origin_country, baro_altitude, velocity FROM aircraft_current_state WHERE on_ground = false AND baro_altitude BETWEEN 0 AND 15000 ORDER BY baro_altitude DESC LIMIT 10",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Top Origin Countries",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT origin_country, count(*) AS aircraft_count FROM aircraft_current_state GROUP BY origin_country ORDER BY aircraft_count DESC LIMIT 10",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Observations Ingested Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT to_timestamp((last_contact / 60) * 60) AS time, count(*) AS observations FROM flight_states_raw WHERE $__unixEpochFilter(last_contact) GROUP BY 1 ORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
